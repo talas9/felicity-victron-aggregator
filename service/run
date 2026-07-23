@@ -1,0 +1,6 @@
+#!/bin/sh
+# daemontools run script: start the Felicity aggregator daemon.
+# exec replaces this shell with python so signals reach the daemon directly.
+exec 2>&1
+cd /data/rs485-cells/aggregator
+exec python3 dbus-felicity-bank.py
