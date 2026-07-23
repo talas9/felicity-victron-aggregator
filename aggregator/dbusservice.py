@@ -40,6 +40,11 @@ logger = logging.getLogger("dbus-felicity-bank.dbusservice")
 # number scattered through the class: named here once.
 BATTERY_SLOT_INDICES = (1, 2)
 
+# Per-pack cosmetic default names, confirmed against physical position via
+# a live unplug test (slot binding is by serial, not by ttyUSB port):
+# slot 1 = physical right pack, slot 2 = physical left pack.
+SLOT_LABELS = {1: "Right", 2: "Left"}
+
 # The fixed, bank-level D-Bus paths written directly from
 # params.build_bank_params()'s top-level keys. Kept as an explicit list
 # (rather than "iterate every dict key") so a stray/renamed key in params
@@ -289,6 +294,12 @@ class FelicityBankDbusService:
         # Per-pack paths, bank is hard 2S.
         for idx in BATTERY_SLOT_INDICES:
             p = f"/Battery/{idx}"
+            s.add_path(
+                f"{p}/CustomName",
+                SLOT_LABELS.get(idx, f"Pack {idx}"),
+                writeable=True,
+                onchangecallback=lambda path, newvalue: True,
+            )
             s.add_path(f"{p}/Serial", None)
             s.add_path(f"{p}/Voltage", None)
             s.add_path(f"{p}/Current", None)
