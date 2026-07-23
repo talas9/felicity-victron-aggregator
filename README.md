@@ -16,6 +16,11 @@ as its own Victron battery service — correct for parallel packs, wrong
 for series. See `aggregator/PARAM-SPEC.md` for the full analysis and
 `aggregator/README.md` for the working implementation notes.
 
+New to this and just want to get it running on your own Cerbo GX? Start
+with **[INSTALL.md](INSTALL.md)** — a beginner-friendly, step-by-step
+walkthrough from an out-of-the-box Venus OS device to a working,
+reboot-proof install.
+
 ## Repository layout
 
 ```
