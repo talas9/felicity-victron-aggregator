@@ -1,0 +1,163 @@
+[
+  {
+    "id": "F1",
+    "expected": "all 7 alarms=0, ChargeFetObserved=1, DischargeFetObserved=1",
+    "actual": "{'fet_charge_observed': True, 'fet_discharge_observed': True, 'fault_flags': {'high_cell_voltage': False, 'low_cell_voltage': False, 'high_charge_current': False, 'high_discharge_current': False, 'high_internal_temperature': False, 'high_charge_temperature': False, 'low_charge_temperature': False}}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "F2-mapping",
+    "expected": "{'high_cell_voltage': 4, 'low_cell_voltage': 8, 'high_charge_current': 16, 'high_discharge_current': 32, 'high_internal_temperature': 64, 'high_charge_temperature': 256, 'low_charge_temperature': 512}",
+    "actual": "{'high_cell_voltage': 4, 'low_cell_voltage': 8, 'high_charge_current': 16, 'high_discharge_current': 32, 'high_internal_temperature': 64, 'high_charge_temperature': 256, 'low_charge_temperature': 512}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "F2",
+    "expected": "only mapped alarm raises for each of 7 bits",
+    "actual": "[('high_cell_voltage', 4, True, ['/Alarms/HighCellVoltage']), ('low_cell_voltage', 8, True, ['/Alarms/LowCellVoltage']), ('high_charge_current', 16, True, ['/Alarms/HighChargeCurrent']), ('high_discharge_current', 32, True, ['/Alarms/HighDischargeCurrent']), ('high_internal_temperature', 64, True, ['/Alarms/HighInternalTemperature']), ('high_charge_temperature', 256, True, ['/Alarms/HighChargeTemperature']), ('low_charge_temperature', 512, True, ['/Alarms/LowChargeTemperature'])]",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "F3a-decode-0xFFFF",
+    "expected": "decoding genuine 0xFFFF register data DOES set all 7 mapped bits (correct decode of real bits, not a bug)",
+    "actual": "{'high_cell_voltage': True, 'low_cell_voltage': True, 'high_charge_current': True, 'high_discharge_current': True, 'high_internal_temperature': True, 'high_charge_temperature': True, 'low_charge_temperature': True}",
+    "pass": true,
+    "note": "This is literal register decode; a real all-1s fault register would legitimately mean all faults active."
+  },
+  {
+    "id": "F3b-failed-read-guard",
+    "expected": "ok=False, fault_flags all False, fet observed=None, no crash",
+    "actual": "{'ok': False, 'error': \"failed to open serial port: [Errno 2] could not open port /dev/ttyUSB99_DOES_NOT_EXIST: [Errno 2] No such file or directory: '/dev/ttyUSB99_DOES_NOT_EXIST'\", 'port': '/dev/ttyUSB99_DOES_NOT_EXIST', 'cells': [], 'cell_count': 0, 'cell_min': None, 'cell_max': None, 'cell_spread_mv': None, 'voltage': None, 'current': None, 'soc': None, 'temp_bms': None, 'temps': [], 'serial': None, 'firmware': None, 'dvcc_max_v': None, 'dvcc_min_v': None, 'dvcc_max_charge_current': None, 'dvcc_max_discharge_current': None, 'fet_charge_observed': None, 'fet_discharge_observed': None, 'fault_flags': {'high_cell_voltage': False, 'low_cell_voltage': False, 'high_charge_current': False, 'high_discharge_current': False, 'high_internal_temperature': False, 'high_charge_temperature': False, 'low_charge_temperature': False}, 'raw': {}, 'simulated': False}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "F4",
+    "expected": "ChargeFetObserved=0 but /Io/AllowToCharge=1 (heuristic-gated, NOT FET-gated)",
+    "actual": "{'ChargeFetObserved': 0, '/Io/AllowToCharge': 1}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "H1",
+    "expected": "charged~0.000778kWh discharged~0.000600kWh ah_drawn~0.0222Ah",
+    "actual": "{'charged': 0.0007777777777777778, 'discharged': 0.0006, 'ah_drawn': 0.022222222222222223}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "H2-backward",
+    "expected": "no negative/corrupt energy accumulation on backward clock jump",
+    "actual": "{'before_charged': 0.0, 'after_charged': 0.0}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "H2-forward",
+    "expected": "huge forward dt does not spike the counter (task said 'clamped at 30s'; actual code SKIPS integration for dt>30s rather than clamping-and-integrating)",
+    "actual": "{'charged_before': 0.0, 'charged_after_1hr_jump': 0.0, 'MAX_REASONABLE_DT_S': 30.0}",
+    "pass": true,
+    "note": "DISCREPANCY vs task wording: code path is 'if 0 < candidate <= MAX_REASONABLE_DT_S: dt_s=candidate' else dt_s stays None -> skip, not clamp-then-integrate."
+  },
+  {
+    "id": "H3",
+    "expected": "all corrupt variants load as fresh state (or safely merged), never raise",
+    "actual": "{'truncated': {'ok': True, 'charge_cycles': 0, 'charged': 0.0}, 'empty': {'ok': True, 'charge_cycles': 0, 'charged': 0.0}, 'invalid_json': {'ok': True, 'charge_cycles': 0, 'charged': 0.0}, 'missing_keys': {'ok': True, 'charge_cycles': 3, 'charged': 0.0}, 'not_an_object': {'ok': True, 'charge_cycles': 0, 'charged': 0.0}}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "H4a-single-rise-drop",
+    "expected": "ChargeCycles == 1",
+    "actual": "1",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "H4b-oscillation-no-spurious",
+    "expected": "ChargeCycles == 1 despite oscillation above rearm threshold (97.0)",
+    "actual": "1",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "H4c-never-reaches-100",
+    "expected": "ChargeCycles == 0",
+    "actual": "0",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "H5",
+    "expected": "no crash/div-by-zero with soc=None and capacity=0.0",
+    "actual": "{'history_ok': True, 'params_soc_none_consumed_ah': None}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "H6",
+    "expected": "save_history swallows the mid-write exception; original file content unchanged (tmp+os.replace pattern verified in source)",
+    "actual": "{'crash_did_not_raise': True, 'old_file_intact': True, 'leftover_tmp_existed': True}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "H7",
+    "expected": "<=1 real write across 20 rapid calls (throttled), forced write always succeeds without hanging",
+    "actual": "{'distinct_mtimes': 1, 'first_write_persisted': True, 'forced_duration_s': 0.0027, 'forced_wrote': True}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "D1",
+    "expected": "min=25.0 max=30.0, sentinel (32767) excluded",
+    "actual": "{'min': 25.0, 'max': 30.0, 'bank_temp': 30.0}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "D2",
+    "expected": "pack1 Soc=72.5 correct, pack2 Soc=None excluded, bank /Soc=72.5, no crash",
+    "actual": "{'pack1_soc': 72.5, 'pack2_soc': None, 'bank_soc': 72.5}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "D3",
+    "expected": "sentinel cells (0x7FFF) excluded by felicity_reader; Voltages/Diff computed from real cells only (0.15V)",
+    "actual": "{'filtered_cells': [3.3, 3.4, 3.25, 3.35], 'Voltages/Diff': 0.1499999999999999}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "I1",
+    "expected": "failure #1: present stays True, data kept, fail_count=1; failure #3: present=False, data=None",
+    "actual": "{'f1': (True, 1), 'f2': (True, 2), 'f3': (False, 3)}",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "I2",
+    "expected": "exception from history_mod.update_history() is caught by _cycle()'s try/except and does not propagate (verified structurally: real code at dbus-felicity-bank.py lines 187-200 wraps update_history/to_dbus_dict/save_history in try/except Exception; NOT exercised via a live daemon instance since that requires a real D-Bus SystemBus session)",
+    "actual": "{'escaped': False, 'after_block_reached': True}",
+    "pass": true,
+    "note": "LIMITATION: could not instantiate FelicityBankDaemon (requires dbus/gi/SettingsDevice + SystemBus) without touching D-Bus session state, per safety constraints. Verified via direct source read + structural reproduction of the exact try/except."
+  },
+  {
+    "id": "I3",
+    "expected": "no field anywhere in the published dict equals 32767/0x7FFF",
+    "actual": "[]",
+    "pass": true,
+    "note": ""
+  },
+  {
+    "id": "I4",
+    "expected": "no 0x06/0x10/write-register references in any module; only FUNCTION_READ=0x03 defined/used",
+    "actual": "{'write_code_hits': '', 'function_defs': ''}",
+    "pass": true,
+    "note": ""
+  }
+]

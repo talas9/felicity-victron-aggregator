@@ -1,0 +1,17 @@
+{
+  "charge_cycles": 7,
+  "charged_energy_kwh": 0.0,
+  "consumed_amphours": null,
+  "created_epoch": 1784583154.3260152,
+  "deepest_discharge_ah": 0.0,
+  "discharged_energy_kwh": 0.0,
+  "full_charge_armed": true,
+  "last_discharge_ah": 0.0,
+  "last_full_charge_epoch": null,
+  "last_update_epoch": null,
+  "max_cell_voltage": null,
+  "max_voltage": null,
+  "min_cell_voltage": null,
+  "min_voltage": null,
+  "total_ah_drawn": 0.0
+}
