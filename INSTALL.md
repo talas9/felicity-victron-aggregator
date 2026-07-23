@@ -232,49 +232,35 @@ executes and restarts if it exits. We create that structure once,
 inside `/data/rs485-cells` (so it survives firmware updates), then
 point Venus OS at it.
 
-### 5.1 Create the service directory structure
+### 5.1 Check the service directory structure
 
-```sh
-mkdir -p /data/rs485-cells/service/log
-```
-
-Create `/data/rs485-cells/service/run`:
-
-```sh
-nano /data/rs485-cells/service/run
-```
-
-With this content:
-
-```sh
-#!/bin/sh
-exec 2>&1
-cd /data/rs485-cells/aggregator
-exec python3 dbus-felicity-bank.py
-```
-
-Create `/data/rs485-cells/service/log/run`:
-
-```sh
-nano /data/rs485-cells/service/log/run
-```
-
-With this content:
-
-```sh
-#!/bin/sh
-exec multilog t s25000 n4 /var/log/dbus-felicity-bank
-```
-
-(This mirrors the standard daemontools logging pattern used by Venus OS
+The `run` scripts daemontools needs are already shipped in this
+repository — `service/run` and `service/log/run` — so once you've
+cloned or copied the repo onto the device (4.1) there's nothing to
+create here. `service/run` starts the aggregator daemon; `service/log/run`
+mirrors the standard daemontools/multilog pattern used by Venus OS
 services in general and by the upstream `dbus-serialbattery` project
-this aggregator builds on — see `CREDITS.md`.)
+this aggregator builds on (see `CREDITS.md`).
 
-Make both scripts executable:
+Confirm both are present and point at the path you actually cloned
+into:
 
 ```sh
-chmod +x /data/rs485-cells/service/run
-chmod +x /data/rs485-cells/service/log/run
+cat /data/rs485-cells/service/run
+cat /data/rs485-cells/service/log/run
+```
+
+If you cloned or copied the repo somewhere other than
+`/data/rs485-cells`, edit `service/run`'s `cd` line to match before
+continuing.
+
+Both scripts ship executable already, but git can lose the executable
+bit depending on how you transferred the repo (e.g. some `scp`/zip
+flows). Verify and fix it if needed:
+
+```sh
+ls -l /data/rs485-cells/service/run /data/rs485-cells/service/log/run
+chmod +x /data/rs485-cells/service/run /data/rs485-cells/service/log/run
 ```
 
 ### 5.2 Link it into `/service` — and why that alone isn't enough
