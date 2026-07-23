@@ -127,13 +127,18 @@ def _avg(values: list[float]) -> float | None:
 # build_bank_params() (supplied by the daemon's own retained per-cycle
 # state) rather than adding hidden state to this module.
 
-# CellImbalance: from /Voltages/Diff (max-cell - min-cell across the
-# bank, computed below as voltages_diff, itself built from the
-# already-cross-pack min_cell_v/max_cell_v computed above). This bank's
-# live baseline spread is ~85-99 mV [verified: live /Voltages/Diff read
-# 2026-07-21 = 0.086 V] -- warning is set a little above that baseline so
-# normal cell drift does not read as a warning; alarm is set at ~2x the
-# warning threshold as a real-divergence signal.
+# CellImbalance: from the WORST single pack's OWN intra-pack cell spread
+# (max_intra_pack_spread, computed per-pack below from each present
+# pack's own cells[]) -- NOT the bank-wide cross-pack /Voltages/Diff
+# (voltages_diff below, built from the cross-pack min_cell_v/max_cell_v
+# computed further up). The bank-wide figure conflates benign INTER-pack
+# offset (e.g. one pack charged/discharged individually while the other
+# sits idle) with true INTRA-pack cell imbalance: live read 2026-07-23
+# showed bank-wide /Voltages/Diff = 0.233 V (would fire ALARM) while each
+# pack's own cells were only 56 mV (pack 1) and 95 mV (pack 2) apart --
+# both well under WARN. Thresholds below apply to the per-pack metric
+# only; voltages_diff stays published at /Voltages/Diff as an
+# informational bank-wide figure, never gating an alarm.
 _CELL_IMBALANCE_WARN_V = 0.100   # 100 mV -- above this bank's known ~85-99mV baseline
 _CELL_IMBALANCE_ALARM_V = 0.200  # 200 mV -- clear real-divergence signal
 
@@ -214,6 +219,22 @@ def build_bank_params(packs: dict[int, "discovery.PackStatus"]) -> dict:
             if max_cell_v is None or v > max_cell_v:
                 max_cell_v = v
                 max_cell_id = f"B{idx}C{cell_num}"
+
+    # Per-pack intra-pack cell spread (max-min WITHIN one pack's own
+    # cells[], never mixed across packs) -- feeds /Alarms/CellImbalance
+    # below instead of the cross-pack voltages_diff. A pack with fewer
+    # than 2 read cells has no meaningful spread and is skipped, same
+    # None-safe/defensive posture as the rest of this module; a single
+    # pack present (the other absent/not ok) still works, since only
+    # present packs are iterated here.
+    max_intra_pack_spread: float | None = None
+    for idx, data in present:
+        pack_cells = data.get("cells") or []
+        if len(pack_cells) < 2:
+            continue
+        pack_spread = max(pack_cells) - min(pack_cells)
+        if max_intra_pack_spread is None or pack_spread > max_intra_pack_spread:
+            max_intra_pack_spread = pack_spread
 
     # /System/NrOfCellsPerBattery: max(cell_count) across present packs,
     # per PARAM-SPEC.md "/System/NrOfCellsPerBattery" row. This is a pure
@@ -390,7 +411,7 @@ def build_bank_params(packs: dict[int, "discovery.PackStatus"]) -> dict:
     # reads. Merged into `alarms` alongside the Group B fault alarms so
     # both go through the same result.update(alarms) below.
     alarms["/Alarms/CellImbalance"] = _threshold_alarm(
-        voltages_diff, _CELL_IMBALANCE_WARN_V, _CELL_IMBALANCE_ALARM_V, high=True
+        max_intra_pack_spread, _CELL_IMBALANCE_WARN_V, _CELL_IMBALANCE_ALARM_V, high=True
     )
     # LowVoltage/HighVoltage compare against bank_voltage, which is a SUM
     # across only the *present* packs (see "/Dc/0/Voltage: SUM across
